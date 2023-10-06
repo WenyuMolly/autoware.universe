@@ -40,11 +40,15 @@ std::vector<std::string> getFilePath(const std::string & input_dir)
 }  // namespace
 namespace object_recognition
 {
+//The TensorrtYoloNodelet constructor is defined. 
+//This constructor is part of a nodelet class and takes rclcpp::NodeOptions as an argument.
 TensorrtYoloNodelet::TensorrtYoloNodelet(const rclcpp::NodeOptions & options)
 : Node("tensorrt_yolo", options)
 {
   using std::placeholders::_1;
 
+//Various parameters related to the object recognition setup are declared and initialized.
+//These parameters include ONNX file paths, engine file paths, label files, calibration image directories, and various configuration settings for the YOLO model.
   std::string onnx_file = declare_parameter("onnx_file", "");
   std::string engine_file = declare_parameter("engine_file", "");
   std::string label_file = declare_parameter("label_file", "");
@@ -67,13 +71,18 @@ TensorrtYoloNodelet::TensorrtYoloNodelet(const rclcpp::NodeOptions & options)
   yolo_config_.use_darknet_layer = declare_parameter("use_darknet_layer", true);
   yolo_config_.ignore_thresh = declare_parameter("ignore_thresh", 0.5);
 
+//GPU configuration is set based on the provided GPU device ID.
   if (!yolo::set_cuda_device(gpu_device_id_)) {
     RCLCPP_ERROR(this->get_logger(), "Given GPU not exist or suitable");
   }
 
+//Label files and model files are checked for existence and read if found.
   if (!readLabelFile(label_file, &labels_)) {
     RCLCPP_ERROR(this->get_logger(), "Could not find label file");
   }
+
+//An inference engine for YOLO is created. 
+//If an engine file exists, it's loaded; otherwise, the engine is built from an ONNX file. 
   std::ifstream fs(engine_file);
   const auto calibration_images = getFilePath(calib_image_directory);
   if (fs.is_open()) {
@@ -97,6 +106,7 @@ TensorrtYoloNodelet::TensorrtYoloNodelet(const rclcpp::NodeOptions & options)
   }
   RCLCPP_INFO(this->get_logger(), "Inference engine prepared.");
 
+//A timer is set up to periodically call the connectCb function.
   using std::chrono_literals::operator""ms;
   timer_ = rclcpp::create_timer(
     this, get_clock(), 100ms, std::bind(&TensorrtYoloNodelet::connectCb, this));
@@ -128,6 +138,7 @@ void TensorrtYoloNodelet::connectCb()
   }
 }
 
+//Publishers for detected objects and images are created.
 void TensorrtYoloNodelet::callback(const sensor_msgs::msg::Image::ConstSharedPtr in_image_msg)
 {
   using Label = autoware_auto_perception_msgs::msg::ObjectClassification;
@@ -198,6 +209,8 @@ void TensorrtYoloNodelet::callback(const sensor_msgs::msg::Image::ConstSharedPtr
   objects_pub_->publish(out_objects);
 }
 
+//Memory buffers are allocated for storing detection results (scores, boxes, and classes)
+// based on the configured maximum batch size and maximum detections.
 bool TensorrtYoloNodelet::readLabelFile(
   const std::string & filepath, std::vector<std::string> * labels)
 {
